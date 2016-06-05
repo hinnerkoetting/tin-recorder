@@ -6,37 +6,37 @@ var possibleStreams = [];
 var runningStreams = [];
  
 
-function readTuneInPage(url) {
+function readTuneInPage(url) {    
     $.ajax({url: url})
     .done(data => {
         var streamInfos = $(data).find(".stream-info").find('a');
-        downloadStreaminfo($(streamInfos[0]));
-        streamInfos.each((index, info) => {
-            console.log(info);    
-        });            
+        streamInfos.each((index, streamInfo) => {
+            downloadStreaminfo(streamInfo);             
+        })                  
     });  
 }
 
 function downloadStreaminfo(streaminfoLink) {
     var streaminfo = {
-        streamid: streaminfoLink.attr('data-streamid'),
-        stationid: streaminfoLink.attr('data-stationid')
+        streamid: $(streaminfoLink).attr('data-streamid'),
+        stationid: $(streaminfoLink).attr('data-stationid'),
+        name: $(streaminfoLink).html()
     };    
     downloadStreamUrl(streaminfo);
 }
 
 function downloadStreamUrl(streaminfo) {
     var url = "http://tunein.com/tuner/tune/?streamId=" + streaminfo.streamid + "&stationId=" + streaminfo.stationid + "&tuneType=Station&ignoreLinkedStations=true"
-    $("#streaminfo").val(url);
+    $("#streaminfos").append('<b>' + streaminfo.name + '</b>: ' + url + "<br/>");
     $.ajax({url: url})
     .done(data => {
         var streamUrl = "http://" + data.StreamUrl.substr(2);
-        $("#stream").val(streamUrl);
-        downloadStream(streamUrl);
+        $("#streamplaylists").append('<b>' + streaminfo.name + '</b>: ' + streamUrl+ "<br/>");
+        downloadStream(streaminfo, streamUrl);
     });
 }
 
-function downloadStream(streamUrl) {
+function downloadStream(streaminfo, streamUrl) {
     $.ajax({url: streamUrl}).done(data => {
         $("#streams")
         var streams = data.Streams;
@@ -44,7 +44,8 @@ function downloadStream(streamUrl) {
         streams.map(stream => stream.Url).forEach((url) => {
             var index = possibleStreams.length;
             possibleStreams[index] = {
-                url                            
+                url,
+                name: streaminfo.name                          
             }; 
             $("#streams").append(createStreamDiv(index));          
             switchToStartButton(index)                                                             
@@ -55,7 +56,7 @@ function downloadStream(streamUrl) {
 function createStreamDiv(index) {
     var textfield = '<input type="text" readonly value="' + possibleStreams[index].url +'"/>';
     var button = createToggleButton(index);    
-    return '<div id="stream' + index + '">' + textfield + button + '</div>';
+    return '<div id="stream' + index + '"><b>' + possibleStreams[index].name + '</b>' + textfield + button + '</div>';
 }
 
 function createToggleButton(index) {
@@ -94,5 +95,10 @@ function startDownload(index) {
 }
 
 function onClickAnalyse() {
+    $("#streamplaylists").empty();
+    $("#streams").empty();    
+    $("#scheduled").empty();    
+    $("#streaminfos").empty();            
+    
     readTuneInPage($('#tuneinUrl').val());
 }
