@@ -1,9 +1,19 @@
 <html>
        <head>
+           <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
            <script src="bower_components/jquery/dist/jquery.js"></script>
            <script src="tunein.js"></script>
+           <script>if (window.module) module = window.module;</script>
        </head>
 <body>
-    Tunein-URL:    <input type="text" id="tuneinUrl"/>
+    <button type="button" onclick="location.reload()">Reload</button> 
+    Tunein-URL:    <input type="text" id="tuneinUrl" value="http://tunein.com/radio/YOU-FM---YOUNG-FRESH-MUSIC-1066-s24878/"/>
+    <button onclick="onClickAnalyse();">Analyse</button><br/>
+    
+    Streaminfo: <input type: "text" readonly id="streaminfo" style="width:200px"/> <br/>
+    Streamplaylist: <input type: "text" readonly id="stream" style="width:200px"/><br/>
+    Streams:
+    <div id="streams"/><br/>
+    Downloads:
 </body>
 </html>
