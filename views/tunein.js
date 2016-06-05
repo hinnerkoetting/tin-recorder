@@ -3,8 +3,13 @@ var http = require('http');
 var fs = require('fs');
 const {dialog} = require('electron').remote;
 
+const anytimeFormat = "%D.%M. %H:%i";
+   
 var possibleStreams = [];
-var runningStreams = []; 
+var runningStreams = [];
+var scheduledStreams = [];
+var currentlyEditedSchedule = null; 
+const converter = new AnyTime.Converter({format: anytimeFormat});
 
 function readTuneInPage(url) {    
     $.ajax({url: url})
@@ -40,7 +45,7 @@ function downloadStream(streaminfo, streamUrl) {
     $.ajax({url: streamUrl}).done(data => {
         $("#streams")
         var streams = data.Streams;
-        console.log("Found stream: " + streams.length);
+        console.log("Found #streams " + streams.length);
         streams.map(stream => stream.Url).forEach((url) => {
             var index = possibleStreams.length;
             possibleStreams[index] = {
@@ -55,8 +60,9 @@ function downloadStream(streaminfo, streamUrl) {
 
 function createStreamDiv(index) {
     var textfield = '<input type="text" readonly value="' + possibleStreams[index].url +'"/>';
-    var button = createToggleButton(index);    
-    return '<div id="stream' + index + '"><b>' + possibleStreams[index].name + '</b>' + textfield + button + '</div>';
+    var toggleButton = createToggleButton(index);
+    var scheduleButton = '<button type="button" onclick="schedule(' + index + ');">Schedule</button>';
+    return '<div id="stream' + index + '"><b>' + possibleStreams[index].name + '</b>' + textfield + toggleButton + scheduleButton + '</div>';
 }
 
 function createToggleButton(index) {
@@ -80,21 +86,25 @@ function cancelDownload(index) {
     runningStreams.splice(index, 1);    
 }
 
-function startDownload(index) {
-    var url = possibleStreams[index].url;
+function startDownload(index) {   
     var storedFilePath = dialog.showSaveDialog();
     if (storedFilePath) {
-        var file = fs.createWriteStream(storedFilePath);
-        var request = http.get(url, function(response) {
-            response.pipe(file);
-        });
-        var streamInfo = possibleStreams[index];
-        runningStreams[index] = 
-            {url,
-            file,
-            request};
-            switchToCancelButton(index);
-    }    
+        downloadTo(storedFilePath, index);
+    }
+}
+
+function downloadTo(storedFilePath, index) {
+    var url = possibleStreams[index].url;    
+    var file = fs.createWriteStream(storedFilePath);
+    var request = http.get(url, function(response) {
+        response.pipe(file);
+    });
+    var streamInfo = possibleStreams[index];
+    runningStreams[index] = 
+        {url,
+        file,
+        request};
+        switchToCancelButton(index);    
 }
 
 function onClickAnalyse() {
@@ -105,3 +115,66 @@ function onClickAnalyse() {
     
     readTuneInPage($('#tuneinUrl').val());
 }
+
+function schedule(index) {
+    currentlyEditedSchedule = {index};
+    var date = new Date(); 
+    date.setMinutes(date.getMinutes() + 5);
+    $("#beginTime").val(converter.format(date));
+    date.setHours(date.getHours() + 1);
+    $("#endTime").val(converter.format(date));        
+    $("#schedulePopup").removeClass('hiddenPopup');          
+}
+
+function saveSchedule() {   
+    var index = currentlyEditedSchedule.index; 
+    currentlyEditedSchedule.startTime = parseDate($("#beginTime").val());
+    currentlyEditedSchedule.endTime = parseDate($("#endTime").val() );
+    scheduledStreams[index] = currentlyEditedSchedule;
+    
+    if (currentlyEditedSchedule.startTime > new Date().getTime() &&  currentlyEditedSchedule.endTime > currentlyEditedSchedule.startTime) {
+        var storedFilePath = dialog.showSaveDialog();
+        if (storedFilePath) {
+            var timeContent = $("#beginTime").val() + ' - ' + $("#endTime").val();
+            var deleteButton = '<button type="button" onclick="deleteSchedule(' + currentlyEditedSchedule.index + ');" >Delete</button>';
+            var status = '<p id="status' + index + '">Scheduled</p>';
+            $("#scheduled").append('<div id="schedule' + index + '">' + timeContent + deleteButton + status + '</div>');
+            $("#schedulePopup").addClass('hiddenPopup');
+            setTimeout(function () {
+                startSchedule(storedFilePath, index);
+            }, currentlyEditedSchedule.startTime.getTime() - new Date().getTime());
+            currentlyEditedSchedule = null; 
+        }  
+    }
+}
+
+function parseDate(text) {
+    var now = new Date();
+    var parsed = converter.parse(text);
+    parsed.setFullYear(now.getFullYear());
+    return parsed;  
+}
+
+function startSchedule(storedFilePath, index) {    
+    downloadTo(storedFilePath, index);
+    $("#status" + index).html('Running');
+    setTimeout(function() {
+         cancelDownload(index);
+         scheduledStreams[index] = null;
+         $("#status" + index).html('Finished');
+    }, scheduledStreams[index].endTime -  scheduledStreams[index].startTime);
+}
+
+function deleteSchedule(index) {
+    scheduledStreams[index] = null;
+    $("#schedule" + index).remove();
+}
+
+$(document).ready(() => {
+    AnyTime.picker( "beginTime", { format: anytimeFormat, firstDOW: 1 } );
+    AnyTime.picker( "endTime", { format: anytimeFormat, firstDOW: 1 } );    
+});
+
+
+
+

@@ -13,6 +13,8 @@
     "tests"
   ],
   "dependencies": {
-    "jquery": "~2.2.4"
+    "jquery": "~2.2.4",
+    "timepicker": "~1.11.1",
+    "jquery-ui": "~1.11.4"
   }
 }
