@@ -4,9 +4,9 @@
   "description": "Record tune in shows",
   "main": "main.js",
   "scripts": {
-    "start": "electron app/main.js",
-    "build": "cd app/views && bower install",
-    "release": "npm run build && electron-packager app --all"
+    "start": "electron main.js",
+    "build": "cd views && bower install",
+    "release": "npm run build && electron-packager . --all"
   },
   "repository": {
     "type": "git",
