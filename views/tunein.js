@@ -1,10 +1,10 @@
 'use strict';
 var http = require('http');
 var fs = require('fs');
+const {dialog} = require('electron').remote;
 
 var possibleStreams = [];
-var runningStreams = [];
- 
+var runningStreams = []; 
 
 function readTuneInPage(url) {    
     $.ajax({url: url})
@@ -82,16 +82,19 @@ function cancelDownload(index) {
 
 function startDownload(index) {
     var url = possibleStreams[index].url;
-    var file = fs.createWriteStream("/home/hinni/electron/stream.mp3");
-    var request = http.get(url, function(response) {
-        response.pipe(file);
-    });
-    var streamInfo = possibleStreams[index];
-    runningStreams[index] = 
-        {url,
-        file,
-        request};
-        switchToCancelButton(index);    
+    var storedFilePath = dialog.showSaveDialog();
+    if (storedFilePath) {
+        var file = fs.createWriteStream(storedFilePath);
+        var request = http.get(url, function(response) {
+            response.pipe(file);
+        });
+        var streamInfo = possibleStreams[index];
+        runningStreams[index] = 
+            {url,
+            file,
+            request};
+            switchToCancelButton(index);
+    }    
 }
 
 function onClickAnalyse() {
