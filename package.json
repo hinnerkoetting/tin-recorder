@@ -1,0 +1,18 @@
+{
+  "name": "tunein-recorder",
+  "version": "0.0.1",
+  "description": "Record tune in shows",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron main.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "totod"
+  },  
+  "author": "Hinnerk Oetting",
+  "license": "MIT",  
+  "devDependencies": {
+    "electron-prebuilt": "^1.2.0"
+  }
+}
