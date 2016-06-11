@@ -9,6 +9,8 @@ var possibleStreams = [];
 var runningStreams = [];
 var scheduledStreams = [];
 var currentlyEditedSchedule = null; 
+var currentIndex = 0;
+
 const converter = new AnyTime.Converter({format: anytimeFormat});
 
 function readTuneInPage(url) {    
@@ -27,27 +29,22 @@ function downloadStreaminfo(streaminfoLink) {
         stationid: $(streaminfoLink).attr('data-stationid'),
         name: $(streaminfoLink).html()
     };    
-    downloadStreamUrl(streaminfo);
+    processStreamInfo(streaminfo);
 }
 
-function downloadStreamUrl(streaminfo) {
-    var url = "http://tunein.com/tuner/tune/?streamId=" + streaminfo.streamid + "&stationId=" + streaminfo.stationid + "&tuneType=Station&ignoreLinkedStations=true"
-    $("#streaminfos").append('<b>' + streaminfo.name + '</b>: ' + url + "<br/>");
-    $.ajax({url: url})
-    .done(data => {
-        var streamUrl = "http://" + data.StreamUrl.substr(2);
-        $("#streamplaylists").append('<b>' + streaminfo.name + '</b>: ' + streamUrl+ "<br/>");
-        downloadStream(streaminfo, streamUrl);
-    });
+function processStreamInfo(streaminfo) {
+    var url = "http://tunein.com/tuner/tune/?streamId=" + streaminfo.streamid + "&stationId=" + streaminfo.stationid + "&tuneType=Station&ignoreLinkedStations=true"    
+    $.ajax({url})
+        .done(data => {
+            var streamUrl = "http://" + data.StreamUrl.substr(2);            
+            processStreamUrl(streaminfo, streamUrl);
+        });
 }
 
-function downloadStream(streaminfo, streamUrl) {
-    $.ajax({url: streamUrl}).done(data => {
-        $("#streams")
-        var streams = data.Streams;
-        console.log("Found #streams " + streams.length);
-        streams.map(stream => stream.Url).forEach((url) => {
-            var index = possibleStreams.length;
+function processStreamUrl(streaminfo, streamUrl) {
+    $.ajax({url: streamUrl}).done(data => {                        
+        data.Streams.map(stream => stream.Url).forEach((url) => {
+            var index = nextIndex();
             possibleStreams[index] = {
                 url,
                 name: streaminfo.name                          
@@ -168,6 +165,10 @@ function startSchedule(storedFilePath, index) {
 function deleteSchedule(index) {
     scheduledStreams[index] = null;
     $("#schedule" + index).remove();
+}
+
+function nextIndex() {
+    return currentIndex++;
 }
 
 $(document).ready(() => {
