@@ -43,10 +43,11 @@ function processStreamInfo(streaminfo) {
 
 function processStreamUrl(streaminfo, streamUrl) {
     $.ajax({url: streamUrl}).done(data => {                        
-        data.Streams.map(stream => stream.Url).forEach((url) => {
+        data.Streams.forEach((stream) => {
             var index = nextIndex();
             possibleStreams[index] = {
-                url,
+                url: stream.Url,
+                mediaType: stream.MediaType,
                 name: streaminfo.name,
                 index                         
             }; 
@@ -91,7 +92,7 @@ function saveSchedule() {
     scheduledStreams[scheduleIndex] = currentlyEditedSchedule;
     
     if (currentlyEditedSchedule.endTime > currentlyEditedSchedule.startTime) {
-        var storedFilePath = dialog.showSaveDialog();
+        var storedFilePath = getFilePath(possibleStreams[streamIndex]);
         if (storedFilePath) {
             
             var timeContent = $("#beginTime").val() + ' - ' + $("#endTime").val();
@@ -110,6 +111,17 @@ function saveSchedule() {
             currentlyEditedSchedule = null; 
         }  
     }
+}
+
+function getFilePath(stream) {
+     var storedFilePath = dialog.showSaveDialog();
+     if (!storedFilePath) {
+         return storedFilePath;
+     }
+     if (storedFilePath.indexOf('.') < 0) {
+         return storedFilePath + '.' + stream.mediaType;
+     } 
+     return storedFilePath;
 }
 
 function parseDate(text) {
@@ -147,7 +159,7 @@ function stopDownload(runningIndex) {
 }
 
 function startDownload(index) {   
-    var storedFilePath = dialog.showSaveDialog();
+    var storedFilePath = getFilePath(possibleStreams[index]);
     if (storedFilePath) {        
         downloadTo(storedFilePath, possibleStreams[index]);
     }
