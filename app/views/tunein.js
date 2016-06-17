@@ -66,11 +66,8 @@ function createToggleButton(index) {
     return '<button type="button" id="toggleButton' + index + '" index="' + index + '">?</button>';
 }
 
-function onClickAnalyse() {
-    $("#streamplaylists").empty();
-    $("#streams").empty();    
-    $("#scheduled").empty();    
-    $("#streaminfos").empty();            
+function onClickAnalyse() {    
+    $("#streams").empty();                         
     
     readTuneInPage($('#tuneinUrl').val());
 }
@@ -144,7 +141,9 @@ function stopDownload(runningIndex) {
     var runningStream = runningStreams[runningIndex];
     runningStream.request.abort();    
     switchToStartButton(possibleStreams[runningStream.streamIndex]);
-    runningStreams.splice(runningIndex, 1);    
+    runningStreams.splice(runningIndex, 1);
+    const downloadIndex = nextIndex();
+    $("#downloads").append('<div id="download' + downloadIndex + '">' + runningStream.path + '</div>');
 }
 
 function startDownload(index) {   
@@ -164,6 +163,7 @@ function downloadTo(storedFilePath, possibleStream) {
     runningStreams[runningIndex] = 
         {url: possibleStream.url,
         file,
+        path: storedFilePath,
         request,
         streamIndex: possibleStream.index,
         runningIndex};

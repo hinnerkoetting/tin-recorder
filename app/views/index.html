@@ -1,39 +1,50 @@
 <html>
-       <head>
-           <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
-           <link rel="stylesheet" href="anytime/anytime.5.1.2.min.css" />
-           <link rel="stylesheet" href="css/recorder.css" />
-           <script src="bower_components/jquery/dist/jquery.js"></script>
-           <script src="anytime/anytime.5.1.2.min.js"></script>
-           <script src="bower_components/timepicker/jquery.timepicker.min.js"></script>
-           <script src="tunein.js"></script>
-           <script>if (window.module) module = window.module;</script>
-       </head>
-<body>         
+
+<head>
+    <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
+    <link rel="stylesheet" href="anytime/anytime.5.1.2.min.css" />
+    <link rel="stylesheet" href="css/recorder.css" />
+    <script src="bower_components/jquery/dist/jquery.js"></script>
+    <script src="anytime/anytime.5.1.2.min.js"></script>
+    <script src="bower_components/timepicker/jquery.timepicker.min.js"></script>
+    <script src="tunein.js"></script>
+    <script>if (window.module) module = window.module;</script>
+</head>
+
+<body>
     Please enter the tunein page:<br/>
-    <input type="text" id="tuneinUrl" value="http://tunein.com/radio/WDR5---H%C3%B6ren-erleben-880-s20301/" style="width:500px"/>
-    <button onclick="onClickAnalyse();">Analyse</button><br/>    
-               
+    <input type="text" id="tuneinUrl" value="http://tunein.com/radio/WDR5---H%C3%B6ren-erleben-880-s20301/" style="width:500px"
+    />
+    <button onclick="onClickAnalyse();">Analyse</button><br/>
+
     <h3>
         Streams:
     </h3>
-    <div id="streams"/>
+    <div id="streams">
     </div>
     <br/>
     <h3>
         Scheduled:
     </h3>
-     <div id="scheduled"/>
-     </div>
-     <br/>
-     <div id="schedulePopup" class="hiddenPopup">
-           Start<input type="text" id="beginTime"/><br/>
-           End<input type="text" id="endTime"/>
-           <br/>
-           <button type="button" onclick="saveSchedule();">Ok</button>
-     </div>
+    <div id="scheduled">
+    </div>
+    <br/>
+    <h3>
+        Downloads:
+    </h3>
+    <div id="downloads">
+    </div>
+
+    <br/>
+    <div id="schedulePopup" class="hiddenPopup">
+        Start<input type="text" id="beginTime" /><br/> End
+        <input type="text" id="endTime" />
+        <br/>
+        <button type="button" onclick="saveSchedule();">Ok</button>
+    </div>
     </br>
     </br>
-     <button type="button" onclick="location.reload()">Reset</button><br/><br/>
+    <button type="button" onclick="location.reload()">Reset</button><br/><br/>
 </body>
+
 </html>
