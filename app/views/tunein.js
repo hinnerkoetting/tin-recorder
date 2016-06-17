@@ -55,11 +55,10 @@ function processStreamUrl(streaminfo, streamUrl) {
     });
 }
 
-function createStreamDiv(index) {
-    var textfield = '<input type="text" readonly value="' + possibleStreams[index].url +'"/>';
+function createStreamDiv(index) {    
     var toggleButton = createToggleButton(index);
     var scheduleButton = '<button type="button" onclick="schedule(' + index + ');">Schedule</button>';
-    return '<div id="stream' + index + '"><b>' + possibleStreams[index].name + '</b>' + textfield + toggleButton + scheduleButton + '</div>';
+    return '<div id="stream' + index + '"><b>' + possibleStreams[index].name + '</b>' + toggleButton + scheduleButton + '</div>';
 }
 
 function createToggleButton(index) {
@@ -72,11 +71,11 @@ function switchToStartButton(index) {
 }
 
 function switchToCancelButton(index) {
-    $("#toggleButton" + index).attr('onclick', "cancelDownload($(this).attr('index'));");
+    $("#toggleButton" + index).attr('onclick', "stopDownload($(this).attr('index'));");
     $("#toggleButton" + index).html('Cancel download');
 }
 
-function cancelDownload(index) {          
+function stopDownload(index) {          
     var stream = runningStreams[index];
     stream.request.abort();    
     switchToStartButton(index);
@@ -114,7 +113,7 @@ function onClickAnalyse() {
 }
 
 function schedule(index) {
-    currentlyEditedSchedule = {index};
+    currentlyEditedSchedule = {stream: possibleStreams[i]};
     var date = new Date(); 
     date.setMinutes(date.getMinutes() + 5);
     $("#beginTime").val(converter.format(date));
@@ -127,7 +126,7 @@ function saveSchedule() {
     var index = currentlyEditedSchedule.index; 
     currentlyEditedSchedule.startTime = parseDate($("#beginTime").val());
     currentlyEditedSchedule.endTime = parseDate($("#endTime").val() );
-    scheduledStreams[index] = currentlyEditedSchedule;
+    scheduledStreams.push(currentlyEditedSchedule);
     
     if (currentlyEditedSchedule.startTime > new Date().getTime() &&  currentlyEditedSchedule.endTime > currentlyEditedSchedule.startTime) {
         var storedFilePath = dialog.showSaveDialog();
@@ -156,7 +155,7 @@ function startSchedule(storedFilePath, index) {
     downloadTo(storedFilePath, index);
     $("#status" + index).html('Running');
     setTimeout(function() {
-         cancelDownload(index);
+         stopDownload(index);
          scheduledStreams[index] = null;
          $("#status" + index).html('Finished');
     }, scheduledStreams[index].endTime -  scheduledStreams[index].startTime);
