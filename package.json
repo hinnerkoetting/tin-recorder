@@ -16,8 +16,8 @@
   "author": "Hinnerk Oetting",
   "license": "MIT",
   "devDependencies": {
-    "electron-packager": "^7.0.3",
-    "electron-prebuilt": "^1.2.0",
-     "electron-zip-packager": "^1.0.4"
+    "electron-packager": "^7.0.4",
+    "electron-prebuilt": "^1.2.3",
+    "electron-zip-packager": "1.0.4"
   }
 }
