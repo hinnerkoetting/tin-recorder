@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron main.js",
     "build": "cd views && bower install",
-    "release": "npm run build && electron-packager . --all"
+    "release": "npm run build && electron-packager . --all",
+    "debug": "electron main.js --debug"
   },
   "repository": {
     "type": "git",

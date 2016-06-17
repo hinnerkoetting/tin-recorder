@@ -47,10 +47,11 @@ function processStreamUrl(streaminfo, streamUrl) {
             var index = nextIndex();
             possibleStreams[index] = {
                 url,
-                name: streaminfo.name                          
+                name: streaminfo.name,
+                index                         
             }; 
             $("#streams").append(createStreamDiv(index));          
-            switchToStartButton(index)                                                             
+            switchToStartButton(possibleStreams[index])                                                             
         });        
     });
 }
@@ -65,44 +66,6 @@ function createToggleButton(index) {
     return '<button type="button" id="toggleButton' + index + '" index="' + index + '">?</button>';
 }
 
-function switchToStartButton(index) {
-    $("#toggleButton" + index).attr('onclick', "startDownload($(this).attr('index'));");
-    $("#toggleButton" + index).html('Start download');
-}
-
-function switchToCancelButton(index) {
-    $("#toggleButton" + index).attr('onclick', "stopDownload($(this).attr('index'));");
-    $("#toggleButton" + index).html('Cancel download');
-}
-
-function stopDownload(index) {          
-    var stream = runningStreams[index];
-    stream.request.abort();    
-    switchToStartButton(index);
-    runningStreams.splice(index, 1);    
-}
-
-function startDownload(index) {   
-    var storedFilePath = dialog.showSaveDialog();
-    if (storedFilePath) {
-        downloadTo(storedFilePath, index);
-    }
-}
-
-function downloadTo(storedFilePath, index) {
-    var url = possibleStreams[index].url;    
-    var file = fs.createWriteStream(storedFilePath);
-    var request = http.get(url, function(response) {
-        response.pipe(file);
-    });
-    var streamInfo = possibleStreams[index];
-    runningStreams[index] = 
-        {url,
-        file,
-        request};
-        switchToCancelButton(index);    
-}
-
 function onClickAnalyse() {
     $("#streamplaylists").empty();
     $("#streams").empty();    
@@ -113,7 +76,7 @@ function onClickAnalyse() {
 }
 
 function schedule(index) {
-    currentlyEditedSchedule = {stream: possibleStreams[i]};
+    currentlyEditedSchedule = {stream: possibleStreams[index], index};
     var date = new Date(); 
     date.setMinutes(date.getMinutes() + 5);
     $("#beginTime").val(converter.format(date));
@@ -123,22 +86,30 @@ function schedule(index) {
 }
 
 function saveSchedule() {   
-    var index = currentlyEditedSchedule.index; 
+    var streamIndex = currentlyEditedSchedule.index; 
     currentlyEditedSchedule.startTime = parseDate($("#beginTime").val());
     currentlyEditedSchedule.endTime = parseDate($("#endTime").val() );
-    scheduledStreams.push(currentlyEditedSchedule);
+
+    const scheduleIndex = nextIndex();
+    scheduledStreams[scheduleIndex] = currentlyEditedSchedule;
     
-    if (currentlyEditedSchedule.startTime > new Date().getTime() &&  currentlyEditedSchedule.endTime > currentlyEditedSchedule.startTime) {
+    if (currentlyEditedSchedule.endTime > currentlyEditedSchedule.startTime) {
         var storedFilePath = dialog.showSaveDialog();
         if (storedFilePath) {
+            
             var timeContent = $("#beginTime").val() + ' - ' + $("#endTime").val();
-            var deleteButton = '<button type="button" onclick="deleteSchedule(' + currentlyEditedSchedule.index + ');" >Delete</button>';
-            var status = '<p id="status' + index + '">Scheduled</p>';
-            $("#scheduled").append('<div id="schedule' + index + '">' + timeContent + deleteButton + status + '</div>');
+            var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Delete</button>';
+            var status = '<span id="status' + scheduleIndex + '">Scheduled</span>';
+            $("#scheduled").append('<div id="schedule' + scheduleIndex + '">' + timeContent + deleteButton + status + '</div>');
             $("#schedulePopup").addClass('hiddenPopup');
-            setTimeout(function () {
-                startSchedule(storedFilePath, index);
-            }, currentlyEditedSchedule.startTime.getTime() - new Date().getTime());
+            const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
+            if (timeUntilStart <= 0) {
+                startSchedule(storedFilePath, possibleStreams[streamIndex], scheduleIndex);
+            } else {
+                setTimeout(function () {
+                    startSchedule(storedFilePath, possibleStreams[streamIndex], scheduleIndex);
+                }, timeUntilStart);
+            }
             currentlyEditedSchedule = null; 
         }  
     }
@@ -151,19 +122,63 @@ function parseDate(text) {
     return parsed;  
 }
 
-function startSchedule(storedFilePath, index) {    
-    downloadTo(storedFilePath, index);
-    $("#status" + index).html('Running');
+function startSchedule(storedFilePath, possibleStream, scheduleIndex) {      
+    const runningDownload = downloadTo(storedFilePath, possibleStream);
+    scheduledStreams[scheduleIndex].runningIndex = runningDownload.runningIndex;
+    $("#status" + scheduleIndex).html('Running');
     setTimeout(function() {
-         stopDownload(index);
-         scheduledStreams[index] = null;
-         $("#status" + index).html('Finished');
-    }, scheduledStreams[index].endTime -  scheduledStreams[index].startTime);
+         stopDownload(runningDownload.runningIndex);
+         scheduledStreams[scheduleIndex] = null;
+         $("#status" + scheduleIndex).html('Finished');
+    }, scheduledStreams[scheduleIndex].endTime -  new Date().getTime());
 }
 
 function deleteSchedule(index) {
+    const scheduledStream = scheduledStreams[index]; 
+    stopDownload(scheduledStream.runningIndex);
     scheduledStreams[index] = null;
     $("#schedule" + index).remove();
+}
+
+function stopDownload(runningIndex) {          
+    var runningStream = runningStreams[runningIndex];
+    runningStream.request.abort();    
+    switchToStartButton(possibleStreams[runningStream.streamIndex]);
+    runningStreams.splice(runningIndex, 1);    
+}
+
+function startDownload(index) {   
+    var storedFilePath = dialog.showSaveDialog();
+    if (storedFilePath) {        
+        downloadTo(storedFilePath, possibleStreams[index]);
+    }
+}
+
+function downloadTo(storedFilePath, possibleStream) {    
+    var file = fs.createWriteStream(storedFilePath);
+    var request = http.get(possibleStream.url, function(response) {
+        response.pipe(file);
+    });
+    var runningIndex = nextIndex();
+    
+    runningStreams[runningIndex] = 
+        {url: possibleStream.url,
+        file,
+        request,
+        streamIndex: possibleStream.index,
+        runningIndex};
+    switchToCancelButton(runningStreams[runningIndex]);  
+    return runningStreams[runningIndex];  
+}
+
+function switchToStartButton(possibleStream) {
+    $("#toggleButton" + possibleStream.index).attr('onclick', "startDownload($(this).attr('index'));");
+    $("#toggleButton" + possibleStream.index).html('Start download');
+}
+
+function switchToCancelButton(runningStream) {
+    $("#toggleButton" + runningStream.streamIndex).attr('onclick', "stopDownload(" + runningStream.runningIndex + ");");
+    $("#toggleButton" + runningStream.streamIndex).html('Stop download');
 }
 
 function nextIndex() {

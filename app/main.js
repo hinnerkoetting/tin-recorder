@@ -8,6 +8,8 @@ const BrowserWindow = electron.BrowserWindow
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow
 
+var debug;
+
 function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({width: 800, height: 600})
@@ -15,8 +17,9 @@ function createWindow () {
   // and load the index.html of the app.
   mainWindow.loadURL(`file://${__dirname}/views/index.html`)
 
-  // Open the DevTools.
-  mainWindow.webContents.openDevTools()
+  if (debug) {
+    mainWindow.webContents.openDevTools()
+  }
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {
@@ -48,6 +51,17 @@ app.on('activate', function () {
     createWindow()
   }
 })
+
+function analyseParameter() {
+  process.argv.forEach(arg => {    
+    if (arg == "--debug") {
+      console.info("debug mode is active");
+      debug = true;
+    }
+  });
+}
+
+analyseParameter();
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

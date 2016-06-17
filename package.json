@@ -4,9 +4,10 @@
   "description": "Record tune in shows",
   "main": "main.js",
   "scripts": {
-    "start": "electron app/main.js",
+    "start": "cd app && npm start",
     "build": "cd app/views && bower install",
-    "release": "npm run build && electron-packager app --all"
+    "release": "npm run build && electron-zip-packager app --all",
+    "debug": "cd app && npm run debug"
   },
   "repository": {
     "type": "git",
@@ -16,6 +17,7 @@
   "license": "MIT",
   "devDependencies": {
     "electron-packager": "^7.0.3",
-    "electron-prebuilt": "^1.2.0"
+    "electron-prebuilt": "^1.2.0",
+     "electron-zip-packager": "^1.0.4"
   }
 }
