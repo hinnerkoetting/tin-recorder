@@ -1,13 +1,16 @@
 'use strict';
 var http = require('http');
 var fs = require('fs');
+var osHomedir = require('os-homedir');
 const {dialog} = require('electron').remote;
+const path = require('path');
 
 const anytimeFormat = "%D.%M. %H:%i";
    
 var possibleStreams = [];
 var runningStreams = [];
 var scheduledStreams = [];
+var downloadedStreams = [];
 var currentlyEditedSchedule = null; 
 var currentIndex = 0;
 
@@ -155,7 +158,35 @@ function stopDownload(runningIndex) {
     switchToStartButton(possibleStreams[runningStream.streamIndex]);
     runningStreams.splice(runningIndex, 1);
     const downloadIndex = nextIndex();
-    $("#downloads").append('<div id="download' + downloadIndex + '">' + runningStream.path + '</div>');
+    downloadedStreams[downloadIndex] = runningStream;
+    var button = '<button type="button" onclick="moveToItunes(' + downloadIndex + ');" >Move to iTunes</button>';
+    $("#downloads").append('<div id="download' + downloadIndex + '">' + runningStream.path + button + '</div>');
+}
+
+function moveToItunes(downloadIndex) { 
+    var folders = findItunesFolder();
+    if (folders.length != 1) {
+        window.alert("Could not find iTunes folder at " + itunesFolder());
+    } else {
+        $("#download" + downloadIndex).html('Imported to iTunes');
+        const oldPath = downloadedStreams[downloadIndex].path;
+        var filename = path.basename(oldPath);
+        fs.rename(downloadedStreams[downloadIndex].path, itunesFolder() + '/' + folders[0] + '/' + filename);
+    }
+}
+
+function findItunesFolder() {   
+    var baseFolder = itunesFolder(); 
+    if (!fs.lstatSync(baseFolder).isDirectory()) {
+        return [];
+    }
+    return fs.readdirSync(baseFolder).filter(function(file) {
+         return fs.statSync(path.join(baseFolder, file)).isDirectory() && file.toUpperCase().indexOf('AUTO') >= 0;
+    });
+}
+
+function itunesFolder() {
+    return osHomedir() + "/Music/iTunes/iTunes\ Media";
 }
 
 function startDownload(index) {   
