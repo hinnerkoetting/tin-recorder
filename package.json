@@ -1,17 +1,17 @@
 {
   "name": "tunein-recorder",
-  "version": "0.0.1",
-  "description": "Record tune in shows",
+  "version": "0.2.1",
+  "description": "Record tune-in radios",
   "main": "main.js",
   "scripts": {
     "start": "cd app && npm start",
-    "build": "cd app/views && bower install",
-    "release": "npm run build && electron-zip-packager app --all",
+    "build": "cd app && npm run build",
+    "release": "cd app && npm run release && cd .. && electron-zip-packager app --all --out=target/",
     "debug": "cd app && npm run debug"
   },
   "repository": {
     "type": "git",
-    "url": "totod"
+    "url": "https://github.com/hinnerkoetting/tunein-recorder/"
   },
   "author": "Hinnerk Oetting",
   "license": "MIT",
