@@ -37,9 +37,13 @@ function readTuneInPage(url) {
     $.ajax({url: url})
     .done(data => {
         var streamInfos = $(data).find(".stream-info").find('a');
-        streamInfos.each((index, streamInfo) => {
-            downloadStreaminfo(streamInfo);             
-        })                  
+        if (streamInfos.length == 0) {
+            $("#streams").append("Could not find any streams.");
+        } else {
+            streamInfos.each((index, streamInfo) => {
+                downloadStreaminfo(streamInfo);             
+            });      
+        }            
     });  
 }
 
@@ -173,7 +177,7 @@ function stopDownload(runningIndex) {
     var runningStream = runningStreams[runningIndex];
     runningStream.request.abort();    
     switchToStartButton(possibleStreams[runningStream.streamIndex]);
-    runningStreams.splice(runningIndex, 1);
+    runningStreams[runningIndex] = null;
     const downloadIndex = nextIndex();
     downloadedStreams[downloadIndex] = runningStream;
     var button = '<button type="button" onclick="moveToItunes(' + downloadIndex + ');" >Move to iTunes</button>';
@@ -215,9 +219,7 @@ function startDownload(index) {
 
 function downloadTo(storedFilePath, possibleStream) {    
     var file = fs.createWriteStream(storedFilePath);
-    var request = http.get(possibleStream.url, function(response) {
-        response.pipe(file);
-    });
+    var request = downloadWithRetry(possibleStream.url, file);
     var runningIndex = nextIndex();
     
     runningStreams[runningIndex] = 
@@ -229,6 +231,28 @@ function downloadTo(storedFilePath, possibleStream) {
         runningIndex};
     switchToCancelButton(runningStreams[runningIndex]);  
     return runningStreams[runningIndex];  
+}
+
+function downloadWithRetry(url, file) {
+    var retryCount = 0;
+    var requestWrapper = {};
+    requestWrapper.abort = function() { this.request.abort(); }
+    download(url, file, requestWrapper, retryCount);
+    return requestWrapper;
+}
+
+function download(url, file, requestWrapper, currentCount) {
+    var request = http.get(url, function(response) {
+        response.pipe(file);
+    }).on('error', (e) => {
+        if (currentCount >= 5) {
+            onFatalError('Got error: ' + e.message + ' Retrycount exceeded...');
+        } else {
+            console.log('Got error: ' + e.message + ' Retrying...');
+            download(url, file, currentCount + 1);
+        }                
+    });
+    requestWrapper.request = request;
 }
 
 function switchToStartButton(possibleStream) {

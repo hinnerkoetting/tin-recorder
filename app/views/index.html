@@ -11,9 +11,10 @@
 
 <body>
     Please enter the tunein page:<br/>
-    <input type="text" id="tuneinUrl" value="http://tunein.com/radio/WDR5---H%C3%B6ren-erleben-880-s20301/" style="width:500px"
-    />
-    <button onclick="onClickAnalyse();">Analyse</button><br/>    
+    <form onsubmit="onClickAnalyse(); return false;">
+        <input type="text" id="tuneinUrl" value="http://tunein.com/radio/WDR5---H%C3%B6ren-erleben-880-s20301/" style="width:500px"/>
+        <input type="submit" value="Analyse"/>
+    </form>    
     <h3>
         Streams:
     </h3>
