@@ -10,3 +10,7 @@
 .hiddenPopup {
     visibility: hidden;
 }
+
+.errors {
+    color: red
+}
