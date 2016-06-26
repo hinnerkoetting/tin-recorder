@@ -175,8 +175,7 @@ function deleteSchedule(index) {
 
 function stopDownload(runningIndex) {          
     var runningStream = runningStreams[runningIndex];
-    runningStream.request.abort();    
-    switchToStartButton(possibleStreams[runningStream.streamIndex]);
+    runningStream.request.abort();        
     runningStreams[runningIndex] = null;
     const downloadIndex = nextIndex();
     downloadedStreams[downloadIndex] = runningStream;
@@ -261,8 +260,14 @@ function switchToStartButton(possibleStream) {
 }
 
 function switchToCancelButton(runningStream) {
-    $("#toggleButton" + runningStream.streamIndex).attr('onclick', "stopDownload(" + runningStream.runningIndex + ");");
+    $("#toggleButton" + runningStream.streamIndex).attr('onclick', "onClickCancel(" + runningStream.runningIndex + ");");
     $("#toggleButton" + runningStream.streamIndex).html('Stop download');
+}
+
+function onClickCancel(runningIndex) {
+    var runningStream = runningStreams[runningIndex];
+    switchToStartButton(possibleStreams[runningStream.streamIndex]);
+    stopDownload(runningIndex);    
 }
 
 function nextIndex() {
