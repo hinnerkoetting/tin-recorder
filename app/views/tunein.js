@@ -6,9 +6,8 @@ function showError(message) {
 
 function onFatalError(message) {    
     console.error(message);    
-    $("#errors").append("<div>" + message + "</div>");    
+    $("#errors").append("<div>" + message + "</div>");
     require('electron').ipcRenderer.send('onError', '');
-    $(":button").attr('disabled', '');
 }
 
 process.on('uncaughtException', (err) => {    
@@ -256,7 +255,10 @@ function hideLoadingAnimation() {
 
 $(document).ready(() => {
     AnyTime.picker( "beginTime", { format: anytimeFormat, firstDOW: 1 } );
-    AnyTime.picker( "endTime", { format: anytimeFormat, firstDOW: 1 } );    
+    AnyTime.picker( "endTime", { format: anytimeFormat, firstDOW: 1 } );
+    var version = require('../package.json').version;
+
+    $("#version").html("Version: " + version);
 });
 
 $(document).ajaxStop(function() {
@@ -264,3 +266,4 @@ $(document).ajaxStop(function() {
 });
 
 $(document).ajaxError((event, jqxhr, settings, thrownError) => showError('Could not load page ' + settings.url));
+

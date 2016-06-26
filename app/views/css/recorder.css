@@ -22,3 +22,8 @@
 .errors {
     color: red
 }
+
+#version {
+    position: absolute;
+    bottom: 0px;
+}
