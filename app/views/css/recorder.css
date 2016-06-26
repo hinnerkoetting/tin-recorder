@@ -2,13 +2,21 @@
     position: absolute;    
     top: 25%;
     left: 25%;
-    z-index: 5;
+    z-index: 2;
     background-color: eeeeee;
     padding: 25px;    
 }
 
 .hiddenPopup {
     visibility: hidden;
+}
+
+#loadingAnimation {
+    position: absolute;
+    visibility: hidden;
+    top: 25%;
+    left: 25%;
+    z-index: 3;
 }
 
 .errors {

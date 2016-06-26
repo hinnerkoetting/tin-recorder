@@ -65,7 +65,7 @@ analyseParameter();
 
 process.on('uncaughtException', (err) => {
   console.log(`Caught exception: ${err}`);
-  mainWindow.webContents.send('showError("foo");');
+  mainWindow.webContents.send('showError("uncaught error");');
 });
 
 var ipc = require('electron').ipcMain;

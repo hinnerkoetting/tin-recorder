@@ -6,17 +6,14 @@
     <link rel="stylesheet" href="css/recorder.css" />
     <script src="bower_components/jquery/dist/jquery.js"></script>
     <script src="anytime/anytime.5.1.2.min.js"></script>
-    <script src="bower_components/timepicker/jquery.timepicker.min.js"></script>
-    <script src="tunein.js"></script>
-    <script>if (window.module) module = window.module;</script>
+    <script src="bower_components/timepicker/jquery.timepicker.min.js"></script>    
 </head>
 
 <body>
     Please enter the tunein page:<br/>
     <input type="text" id="tuneinUrl" value="http://tunein.com/radio/WDR5---H%C3%B6ren-erleben-880-s20301/" style="width:500px"
     />
-    <button onclick="onClickAnalyse();">Analyse</button><br/>
-    <button id="auth-button">Auth</button>
+    <button onclick="onClickAnalyse();">Analyse</button><br/>    
     <h3>
         Streams:
     </h3>
@@ -36,6 +33,7 @@
     </div>
 
     <br/>
+    <img src="img/ajax-loader.gif" id="loadingAnimation"/>
     <div id="schedulePopup" class="hiddenPopup">
         Start<input type="text" id="beginTime" /><br/> End
         <input type="text" id="endTime" />
@@ -46,6 +44,9 @@
     </br>
     <div id="errors" class="errors"></div>
     <button type="button" onclick="location.reload()">Reset</button><br/><br/>
+
+    <script src="tunein.js"></script>
+    <script>if (window.module) module = window.module;</script>
 </body>
 
 </html>
