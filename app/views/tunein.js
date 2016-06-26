@@ -212,8 +212,9 @@ function itunesFolder() {
 
 function startDownload(index) {   
     var storedFilePath = getFilePath(possibleStreams[index]);
-    if (storedFilePath) {        
-        downloadTo(storedFilePath, possibleStreams[index]);
+    if (storedFilePath) {                
+        var runningStream = downloadTo(storedFilePath, possibleStreams[index]);
+        switchToCancelButton(runningStream);
     }
 }
 
@@ -228,8 +229,7 @@ function downloadTo(storedFilePath, possibleStream) {
         path: storedFilePath,
         request,
         streamIndex: possibleStream.index,
-        runningIndex};
-    switchToCancelButton(runningStreams[runningIndex]);  
+        runningIndex};      
     return runningStreams[runningIndex];  
 }
 
