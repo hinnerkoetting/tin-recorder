@@ -267,3 +267,7 @@ $(document).ajaxStop(function() {
 
 $(document).ajaxError((event, jqxhr, settings, thrownError) => showError('Could not load page ' + settings.url));
 
+function onClickReset() {
+    if (confirm("This will remove all schedules and stop all downloads. Are you sure?"))
+        location.reload();
+}
