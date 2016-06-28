@@ -1,6 +1,6 @@
 {
   "name": "tunein-recorder",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Record tune-in radios",
   "main": "main.js",
   "scripts": {
