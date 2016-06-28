@@ -35,17 +35,43 @@ const converter = new AnyTime.Converter({format: anytimeFormat});
 function readTuneInPage(url) {
     showLoadingAnimation();
     $.ajax({url: url})
-    .done(data => {
-        var streamInfos = $(data).find(".stream-info").find('a');
-        if (streamInfos.length == 0) {
-            $("#streams").append("Could not find any streams.");
-        } else {
-            streamInfos.each((index, streamInfo) => {
-                downloadStreaminfo(streamInfo);             
-            });      
-        }            
-    });  
+        .done(data => {
+            const streamLinksAvailable = analyseViaStreamLinks(data);
+            if (!streamLinksAvailable) {
+                const payloadAvailable = analyseViaJavascriptPayload(data);
+                if (!payloadAvailable) {
+                    $("#streams").append("Could not find any streams.");
+                } 
+            }                    
+        });  
 }
+
+function analyseViaStreamLinks(data) {    
+    var streamInfos = $(data).find(".stream-info").find('a');
+    if (streamInfos.length == 0) {
+        return false;
+    } else {
+        streamInfos.each((index, streamInfo) => {
+            downloadStreaminfo(streamInfo);             
+        });
+        return true;
+    }      
+}
+
+function analyseViaJavascriptPayload(data) {
+    try {
+        var myRegexp = new RegExp('TuneIn.payload.*');
+        var match = myRegexp.exec(data)[0].substr('TuneIn.payload = '.length);
+        var payload = JSON.parse(match);
+        console.log(payload);
+        processStreamStationInfo(payload.Station);
+        return true;
+    } catch (e) {
+        console.error(e);
+        return false;
+    }  
+}
+
 
 function downloadStreaminfo(streaminfoLink) {
     var streaminfo = {
@@ -65,6 +91,15 @@ function processStreamInfo(streaminfo) {
         });
 }
 
+function processStreamStationInfo(streaminfo) {
+    var url = "http://tunein.com/tuner/tune/?stationId=" + streaminfo.stationId + "&tuneType=Station&ignoreLinkedStations=true"    
+    $.ajax({url})
+        .done(data => {
+            var streamUrl = "http://" + data.StreamUrl.substr(2);            
+            processStreamUrl(streaminfo, streamUrl);
+        });
+}
+
 function processStreamUrl(streaminfo, streamUrl) {
     $.ajax({url: streamUrl}).done(data => {                        
         data.Streams.forEach((stream) => {
@@ -72,7 +107,7 @@ function processStreamUrl(streaminfo, streamUrl) {
             possibleStreams[index] = {
                 url: stream.Url,
                 mediaType: stream.MediaType,
-                name: streaminfo.name,
+                name: streaminfo.name ? streaminfo.name: streaminfo.description,
                 index                         
             }; 
             $("#streams").append(createStreamDiv(index));          
@@ -120,7 +155,7 @@ function saveSchedule() {
         if (storedFilePath) {
             
             var timeContent = $("#beginTime").val() + ' - ' + $("#endTime").val();
-            var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Delete</button>';
+            var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Stop</button>';
             var status = '<span id="status' + scheduleIndex + '">Scheduled</span>';
             $("#scheduled").append('<div id="schedule' + scheduleIndex + '">' + timeContent + deleteButton + status + '</div>');
             $("#schedulePopup").addClass('hiddenPopup');
@@ -170,7 +205,7 @@ function deleteSchedule(index) {
     const scheduledStream = scheduledStreams[index]; 
     stopDownload(scheduledStream.runningIndex);
     scheduledStreams[index] = null;
-    $("#schedule" + index).remove();
+    $("#status" + scheduleIndex).html('Stopped');
 }
 
 function stopDownload(runningIndex) {          
