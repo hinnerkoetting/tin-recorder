@@ -24,7 +24,7 @@ const {dialog} = require('electron').remote;
 const path = require('path');
 const mkdirp = require('mkdirp');
 
-const anytimeFormat = "%D.%M. %H:%i";
+const anytimeFormat = "%e %W %H:%i";
 
 var possibleStreams = [];
 var runningStreams = [];
@@ -141,40 +141,44 @@ function schedule(index) {
     currentlyEditedSchedule = {stream: possibleStreams[index], index};
     var date = new Date(); 
     date.setMinutes(date.getMinutes() + 5);
-    $("#beginTime").val(converter.format(date));
-    date.setHours(date.getHours() + 1);
-    $("#endTime").val(converter.format(date));        
+    $("#beginTime").val(converter.format(date));            
     $("#schedulePopup").removeClass('hiddenPopup');          
 }
 
 function saveSchedule() {   
     var streamIndex = currentlyEditedSchedule.index; 
     currentlyEditedSchedule.startTime = parseDate($("#beginTime").val());
-    currentlyEditedSchedule.endTime = parseDate($("#endTime").val() );
+    currentlyEditedSchedule.startTime.setMonth(new Date().getMonth());
+    currentlyEditedSchedule.duration = $("#duration").val();
+    if (!currentlyEditedSchedule.duration) {
+        currentlyEditedSchedule.duration = 30;
+    }
 
     const scheduleIndex = nextIndex();
     scheduledStreams[scheduleIndex] = currentlyEditedSchedule;
     
-    if (currentlyEditedSchedule.endTime > currentlyEditedSchedule.startTime) {
-        var storedFilePath = getFilePath(possibleStreams[streamIndex]);
-        if (storedFilePath) {
-            
-            var timeContent = $("#beginTime").val() + ' - ' + $("#endTime").val();
-            var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Stop</button>';
-            var status = '<span id="status' + scheduleIndex + '">Scheduled</span>';
-            $("#scheduled").append('<div id="schedule' + scheduleIndex + '">' + timeContent + deleteButton + status + '</div>');
-            $("#schedulePopup").addClass('hiddenPopup');
-            const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
-            if (timeUntilStart <= 0) {
-                startSchedule(storedFilePath, possibleStreams[streamIndex], scheduleIndex);
-            } else {
-                setTimeout(function () {
-                    startSchedule(storedFilePath, possibleStreams[streamIndex], scheduleIndex);
-                }, timeUntilStart);
-            }
-            currentlyEditedSchedule = null; 
-        }  
+    if (isPositiveInteger(currentlyEditedSchedule.duration)) {                    
+        var timeContent = $("#beginTime").val() + ' (' + currentlyEditedSchedule.duration + " minutes)";
+        var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Stop</button>';
+        var status = '<span id="status' + scheduleIndex + '">Scheduled</span>';
+        $("#scheduled").append('<div id="schedule' + scheduleIndex + '">' + timeContent + deleteButton + status + '</div>');
+        $("#schedulePopup").addClass('hiddenPopup');
+        const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
+        if (timeUntilStart <= 0) {
+            startScheduledDownload(possibleStreams[streamIndex], scheduleIndex);
+        } else {
+            setTimeout(function () {
+                if (possibleStreams[streamIndex]) {
+                    startScheduledDownload(possibleStreams[streamIndex], scheduleIndex);
+                }
+            }, timeUntilStart);
+        }
+        currentlyEditedSchedule = null;
     }
+}
+
+function isPositiveInteger(n) {
+    return 0 === n % (!isNaN(parseFloat(n)) && 0 <= ~~n);
 }
 
 function getFilePath(stream) {
@@ -209,22 +213,28 @@ function parseDate(text) {
     return parsed;  
 }
 
-function startSchedule(storedFilePath, possibleStream, scheduleIndex) {      
-    const runningDownload = downloadTo(storedFilePath, possibleStream);
+function startScheduledDownload(possibleStream, scheduleIndex) {
+    const filePath = getFilePath(possibleStream)      
+    const runningDownload = downloadTo(filePath, possibleStream);
     scheduledStreams[scheduleIndex].runningIndex = runningDownload.runningIndex;
     $("#status" + scheduleIndex).html('Running');
     setTimeout(function() {
         stopDownload(runningDownload.runningIndex);
         scheduledStreams[scheduleIndex] = null;
         $("#status" + scheduleIndex).html('Finished');
-    }, scheduledStreams[scheduleIndex].endTime -  new Date().getTime());
+    }, scheduledStreams[scheduleIndex].duration * 60 * 1000);
 }
 
 function deleteSchedule(index) {
-    const scheduledStream = scheduledStreams[index]; 
-    stopDownload(scheduledStream.runningIndex);
-    scheduledStreams[index] = null;
-    $("#status" + scheduleIndex).html('Stopped');
+    const scheduledStream = scheduledStreams[index];
+    if (scheduledStream.startTime.getTime() > new Date().getTime()) {
+        $("#schedule" + index).remove();
+    }  else {
+        stopDownload(scheduledStream.runningIndex);
+        scheduledStreams[index] = null;
+        $("#schedule" + index).children("button").remove();
+        $("#status" + index).html('Stopped');
+    }
 }
 
 function stopDownload(runningIndex) {          
@@ -339,8 +349,7 @@ function hideLoadingAnimation() {
 }
 
 $(document).ready(() => {
-    AnyTime.picker( "beginTime", { format: anytimeFormat, firstDOW: 1 } );
-    AnyTime.picker( "endTime", { format: anytimeFormat, firstDOW: 1 } );
+    AnyTime.picker( "beginTime", { format: anytimeFormat, firstDOW: 1 } );    
     var version = require('../package.json').version;
 
     $("#version").html("Version: " + version);
