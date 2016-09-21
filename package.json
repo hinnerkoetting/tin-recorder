@@ -5,9 +5,9 @@
   "main": "main.js",
   "scripts": {
     "clean": "rimraf target",
-    "start": "cd app && npm start",
+    "start": "electron app/main.js",
     "build": "cd app && npm run build",
-    "release-zip-packager": "cd app && npm run release && cd .. && electron-zip-packager app --all --out=target/",    
+    "release-zip-packager": "cd app && npm run release && cd .. && electron-zip-packager app --all --out=target/",
     "release-mac": "rimraf target/tunein-recorder-app-darwin-x64.zip && zip -r -y target/tunein-recorder-app-darwin-x64.zip target/tunein-recorder-app-darwin-x64",
     "release": "npm run clean && npm install && npm run release-zip-packager && npm run release-mac",
     "debug": "cd app && npm run debug"
@@ -19,6 +19,7 @@
   "author": "Hinnerk Oetting",
   "license": "MIT",
   "devDependencies": {
+    "electron": "^1.4.0",
     "electron-packager": "^7.0.4",
     "electron-prebuilt": "^1.2.3",
     "electron-zip-packager": "1.0.4",
