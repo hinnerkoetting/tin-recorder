@@ -4,14 +4,17 @@ function showError(message) {
     $("#errors").append("<div>" + message + "</div>");    
 }
 
-function onFatalError(message) {    
+function onFatalError(message, stacktrace) {    
     console.error(message);    
+    if (stacktrace) {
+        console.error(stacktrace);
+    }
     $("#errors").append("<div>" + message + "</div>");
     require('electron').ipcRenderer.send('onError', '');
 }
 
 process.on('uncaughtException', (err) => {    
-    onFatalError('Fatal error: ' + err.message);
+    onFatalError('Fatal error: ' + err.message, err.stack);
 });
 
 var http = require('http');
@@ -221,27 +224,29 @@ function stopDownload(runningIndex) {
 function moveToItunes(downloadIndex) { 
     var folders = findItunesFolder();
     if (folders.length != 1) {
-        window.alert("Could not find iTunes folder at " + itunesFolder());
+        window.alert("I could not find iTunes auto-import folder. I searched at the following locations: " + itunesFolders());
     } else {
         $("#download" + downloadIndex).html('Imported to iTunes');
         const oldPath = downloadedStreams[downloadIndex].path;
         var filename = path.basename(oldPath);
-        fs.rename(downloadedStreams[downloadIndex].path, itunesFolder() + '/' + folders[0] + '/' + filename);
+        fs.rename(downloadedStreams[downloadIndex].path, folders[0] + '/' + filename);
     }
 }
 
 function findItunesFolder() {   
-    var baseFolder = itunesFolder(); 
-    if (!fs.lstatSync(baseFolder).isDirectory()) {
-        return [];
-    }
-    return fs.readdirSync(baseFolder).filter(function(file) {
-        return fs.statSync(path.join(baseFolder, file)).isDirectory() && file.toUpperCase().indexOf('AUTO') >= 0;
-    });
+    const baseFolders = itunesFolders();
+    const existingFolders = baseFolders.filter(folder => fs.existsSync(folder) && fs.lstatSync(folder).isDirectory()) ;
+    return existingFolders.map(folder => {
+        return fs.readdirSync(folder).filter(function(file) {
+            return fs.statSync(path.join(folder, file)).isDirectory() && file.toUpperCase().indexOf('AUTO') >= 0;
+        }).map(subfolder => folder + "/" + subfolder);
+    }).reduce((prev, curr) => prev.concat(curr));
 }
 
-function itunesFolder() {
-    return osHomedir() + "/Music/iTunes/iTunes\ Media";
+function itunesFolders() {
+    const linuxWinPath = osHomedir() + "/Music/iTunes/iTunes\ Media";
+    const macPath = osHomedir() + "/Music/iTunes/iTunes\ Music"
+    return [linuxWinPath, macPath];
 }
 
 function startDownload(index) {   
