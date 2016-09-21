@@ -22,6 +22,7 @@ var fs = require('fs');
 var osHomedir = require('os-homedir');
 const {dialog} = require('electron').remote;
 const path = require('path');
+const mkdirp = require('mkdirp');
 
 const anytimeFormat = "%D.%M. %H:%i";
 
@@ -90,7 +91,7 @@ function processStreamInfo(streaminfo) {
     $.ajax({url})
         .done(data => {
             var streamUrl = "http://" + data.StreamUrl.substr(2);            
-            processStreamUrl(streaminfo, streamUrl);
+            processStreamUrl(streaminfo, streamUrl, data.Title);
         });
 }
 
@@ -99,11 +100,11 @@ function processStreamStationInfo(streaminfo) {
     $.ajax({url})
         .done(data => {
             var streamUrl = "http://" + data.StreamUrl.substr(2);            
-            processStreamUrl(streaminfo, streamUrl);
+            processStreamUrl(streaminfo, streamUrl, data.Title);
         });
 }
 
-function processStreamUrl(streaminfo, streamUrl) {
+function processStreamUrl(streaminfo, streamUrl, title) {
     $.ajax({url: streamUrl}).done(data => {                        
         data.Streams.forEach((stream) => {
             var index = nextIndex();
@@ -111,7 +112,8 @@ function processStreamUrl(streaminfo, streamUrl) {
                 url: stream.Url,
                 mediaType: stream.MediaType,
                 name: streaminfo.name ? streaminfo.name: streaminfo.description,
-                index                         
+                index,
+                title
             }; 
             $("#streams").append(createStreamDiv(index));          
             switchToStartButton(possibleStreams[index])                                                             
@@ -176,14 +178,28 @@ function saveSchedule() {
 }
 
 function getFilePath(stream) {
-    var storedFilePath = dialog.showSaveDialog();
-    if (!storedFilePath) {
-        return storedFilePath;
-    }
-    if (storedFilePath.indexOf('.') < 0) {
-        return storedFilePath + '.' + stream.mediaType;
-    } 
-    return storedFilePath;
+    const baseFolder = getDownloadFolder();
+    return baseFolder + "/" + stream.title + "-" + currentDateFormatted() + "." + stream.mediaType;    
+}
+
+function currentDateFormatted() {
+    const now = new Date();
+    return now.getFullYear() + "-"
+                + (now.getMonth()+1)  + "-" 
+                + now.getDate() + "_"  
+                + now.getHours() + "_"  
+                + now.getMinutes() + "_" 
+                + now.getSeconds();
+}
+
+function getDownloadFolder() {
+    const folder = osHomedir() + "/tunein-recorder";
+    if (!fs.existsSync(folder)) {
+        mkdirp(folder, function(err) {
+            onFatalError(err);
+        });    
+    };
+    return folder;
 }
 
 function parseDate(text) {
