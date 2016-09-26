@@ -30,6 +30,8 @@ var possibleStreams = [];
 var runningStreams = [];
 var scheduledStreams = [];
 var downloadedStreams = [];
+var weeklySchedules = [];
+var dailySchedules = [];
 var currentlyEditedSchedule = null; 
 var currentIndex = 0;
 
@@ -160,21 +162,55 @@ function saveSchedule() {
     if (isPositiveInteger(currentlyEditedSchedule.duration)) {                    
         var timeContent = $("#beginTime").val() + ' (' + currentlyEditedSchedule.duration + " minutes)";
         var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Stop</button>';
-        var status = '<span id="status' + scheduleIndex + '">Scheduled</span>';
+        var status = '<span id="status' + scheduleIndex + '">Scheduled ' + $("input[name='schedule-type']:checked").val() + '</span>';
         $("#scheduled").append('<div id="schedule' + scheduleIndex + '">' + timeContent + deleteButton + status + '</div>');
-        $("#schedulePopup").addClass('hiddenPopup');
-        const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
-        if (timeUntilStart <= 0) {
-            startScheduledDownload(possibleStreams[streamIndex], scheduleIndex);
+        $("#schedulePopup").addClass('hiddenPopup');        
+        if ($("input[name='schedule-type']:checked").val() == 'once') {
+            saveOnceSchedule(streamIndex, scheduleIndex);
+        } else if ($("input[name='schedule-type']:checked").val() == 'weekly') {
+            saveWeeklySchedule(streamIndex, scheduleIndex);
+        } else if ($("input[name='schedule-type']:checked").val() == 'daily') {
+            saveDailySchedule(streamIndex, scheduleIndex);
         } else {
-            setTimeout(function () {
-                if (possibleStreams[streamIndex]) {
-                    startScheduledDownload(possibleStreams[streamIndex], scheduleIndex);
-                }
-            }, timeUntilStart);
+            throw new error("unknown scheduly type " + $("input[name='schedule-type']:checked").val());
         }
         currentlyEditedSchedule = null;
     }
+}
+
+function saveOnceSchedule(streamIndex, scheduleIndex) {
+    const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
+        if (timeUntilStart <= 0) {
+            startScheduledDownload(streamIndex, scheduleIndex);
+        } else {
+            setTimeout(() => {
+                startScheduledDownload(streamIndex, scheduleIndex);                
+            }, timeUntilStart);
+        }
+}
+
+function saveWeeklySchedule(streamIndex, scheduleIndex) {
+    var time = currentlyEditedSchedule.startTime;    
+    var sched = createWeeklySchedule(currentlyEditedSchedule.startTime);
+    later.setInterval(() => {
+        startScheduledDownload(possibleStreams[streamIndex], scheduleIndex);
+    }, sched);
+}
+
+function saveDailySchedule(streamIndex, scheduleIndex) {
+    var time = currentlyEditedSchedule.startTime;    
+    var sched = createDailySchedule(currentlyEditedSchedule.startTime);
+    later.setInterval(() => {
+        startScheduledDownload(streamIndex, scheduleIndex);
+    }, sched);
+}
+
+function createWeeklySchedule(time) {
+    return later.parse.recur().on(time.getDay() + 1).dayOfWeek().on(time.getMinutes()).minute().on(time.getHours()).hour();    
+}
+
+function createDailySchedule(time) {
+    return later.parse.recur().on(time.getMinutes()).minute().on(time.getHours()).hour();    
 }
 
 function isPositiveInteger(n) {
@@ -213,7 +249,11 @@ function parseDate(text) {
     return parsed;  
 }
 
-function startScheduledDownload(possibleStream, scheduleIndex) {
+function startScheduledDownload(possibleStreamIndex, scheduleIndex) {
+    if (!possibleStreams[possibleStreamIndex]) {
+        return;
+    }
+    const possibleStream = possibleStreams[possibleStreamIndex];
     const filePath = getFilePath(possibleStream)      
     const runningDownload = downloadTo(filePath, possibleStream);
     scheduledStreams[scheduleIndex].runningIndex = runningDownload.runningIndex;
@@ -314,7 +354,7 @@ function download(url, file, requestWrapper, currentCount) {
             onFatalError('Got error: ' + e.message + ' Retrycount exceeded...');
         } else {
             console.log('Got error: ' + e.message + ' Retrying...');
-            download(url, file, currentCount + 1);
+            download(url, file, requestWrapper, currentCount + 1);
         }                
     });
     requestWrapper.request = request;
@@ -353,6 +393,7 @@ $(document).ready(() => {
     var version = require('../package.json').version;
 
     $("#version").html("Version: " + version);
+    later.date.localTime();
 });
 
 $(document).ajaxStop(function() {

@@ -7,6 +7,7 @@
     <script src="bower_components/jquery/dist/jquery.js"></script>
     <script src="anytime/anytime.5.1.2.min.js"></script>
     <script src="bower_components/timepicker/jquery.timepicker.min.js"></script>    
+    <script src="bower_components/later/later.min.js"></script>
 </head>
 
 <body>
@@ -38,9 +39,11 @@
     <div id="schedulePopup" class="hiddenPopup">
         Start<input type="text" id="beginTime" /><br/> 
         Duration
-        <input type="text" id="beginTime" placeholder="30"/> minutes<br/>
-        <br/>
-        <button type="button" onclick="saveSchedule();">Ok</button>
+        <input type="text" id="beginTime" placeholder="30" size="5"/> minutes<br/>        
+        <input type="radio" name="schedule-type" value="once" checked='checked'>Record once</input>
+        <input type="radio" name="schedule-type" value="daily" >Repeat daily</input>
+        <input type="radio" name="schedule-type" value="weekly" >Repeat weekly</input></br>
+        <button type="button" onclick="saveSchedule();">Schedule</button>
     </div>
     </br>
     </br>
