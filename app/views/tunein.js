@@ -27,13 +27,13 @@ const mkdirp = require('mkdirp');
 const anytimeFormat = "%e %W %H:%i";
 
 var possibleStreams = [];
-var runningStreams = [];
-var scheduledStreams = [];
 var downloadedStreams = [];
-var weeklySchedules = [];
-var dailySchedules = [];
 var currentlyEditedSchedule = null; 
-var currentIndex = 0;
+
+var model = {
+    currentIndex: 0,
+    streams: []
+};
 
 const converter = new AnyTime.Converter({format: anytimeFormat});    
 
@@ -108,29 +108,29 @@ function processStreamStationInfo(streaminfo) {
 
 function processStreamUrl(streaminfo, streamUrl, title) {
     $.ajax({url: streamUrl}).done(data => {                        
-        data.Streams.forEach((stream) => {
-            var index = nextIndex();
-            possibleStreams[index] = {
+        data.Streams.forEach((stream) => {            
+            var possibleStream = {
                 url: stream.Url,
                 mediaType: stream.MediaType,
-                name: streaminfo.name ? streaminfo.name: streaminfo.description,
-                index,
+                name: streaminfo.name ? streaminfo.name: streaminfo.description,                
                 title
-            }; 
-            $("#streams").append(createStreamDiv(index));          
-            switchToStartButton(possibleStreams[index])                                                             
+            };
+            const inpossibleStreamIndex = possibleStreams.length;
+            possibleStreams[inpossibleStreamIndex] = possibleStream;
+            $("#streams").append(createStreamDiv(inpossibleStreamIndex));          
+            switchToStartButton(inpossibleStreamIndex)                                                             
         });        
     });
 }
 
-function createStreamDiv(index) {    
-    var toggleButton = createToggleButton(index);
-    var scheduleButton = '<button type="button" onclick="schedule(' + index + ');">Schedule</button>';
-    return '<div id="stream' + index + '"><b>' + possibleStreams[index].name + '</b>' + toggleButton + scheduleButton + '</div>';
+function createStreamDiv(possibleStreamIndex) {    
+    var toggleButton = createToggleButton(possibleStreamIndex);
+    var scheduleButton = '<button type="button" onclick="schedule(' + possibleStreamIndex + ');">Schedule</button>';
+    return '<div id="stream' + possibleStreamIndex + '"><b>' + possibleStreams[possibleStreamIndex].name + '</b>' + toggleButton + scheduleButton + '</div>';
 }
 
-function createToggleButton(index) {
-    return '<button type="button" id="toggleButton' + index + '" index="' + index + '">?</button>';
+function createToggleButton(possibleStreamIndex) {
+    return '<button type="button" id="toggleButton' + possibleStreamIndex + '" index="' + possibleStreamIndex + '">?</button>';
 }
 
 function onClickAnalyse() {    
@@ -139,8 +139,8 @@ function onClickAnalyse() {
     readTuneInPage($('#tuneinUrl').val());
 }
 
-function schedule(index) {
-    currentlyEditedSchedule = {stream: possibleStreams[index], index};
+function schedule(possibleStreamIndex) {
+    currentlyEditedSchedule = {stream: possibleStreams[possibleStreamIndex], index: possibleStreamIndex};
     var date = new Date(); 
     date.setMinutes(date.getMinutes() + 5);
     $("#beginTime").val(converter.format(date));            
@@ -148,69 +148,85 @@ function schedule(index) {
 }
 
 function saveSchedule() {   
-    var streamIndex = currentlyEditedSchedule.index; 
+    var streamIndex = nextIndex(); 
     currentlyEditedSchedule.startTime = parseDate($("#beginTime").val());
-    currentlyEditedSchedule.startTime.setMonth(new Date().getMonth());
+    currentlyEditedSchedule.startTime.setMonth(new Date().getMonth());    
     currentlyEditedSchedule.duration = $("#duration").val();
+    currentlyEditedSchedule.type = $("input[name='schedule-type']:checked").val();
+    setNextStartTime(currentlyEditedSchedule);
     if (!currentlyEditedSchedule.duration) {
         currentlyEditedSchedule.duration = 30;
     }
-
-    const scheduleIndex = nextIndex();
-    scheduledStreams[scheduleIndex] = currentlyEditedSchedule;
     
-    if (isPositiveInteger(currentlyEditedSchedule.duration)) {                    
-        var timeContent = $("#beginTime").val() + ' (' + currentlyEditedSchedule.duration + " minutes)";
-        var deleteButton = '<button type="button" onclick="deleteSchedule(' + scheduleIndex + ');" >Stop</button>';
-        var status = '<span id="status' + scheduleIndex + '">Scheduled ' + $("input[name='schedule-type']:checked").val() + '</span>';
-        $("#scheduled").append('<div id="schedule' + scheduleIndex + '">' + timeContent + deleteButton + status + '</div>');
+    model.streams[streamIndex] = currentlyEditedSchedule;
+    
+    if (isPositiveInteger(currentlyEditedSchedule.duration)) {  
+        appendScheduleEntry(currentlyEditedSchedule, streamIndex);                          
         $("#schedulePopup").addClass('hiddenPopup');        
         if ($("input[name='schedule-type']:checked").val() == 'once') {
-            saveOnceSchedule(streamIndex, scheduleIndex);
+            saveOnceSchedule(streamIndex);
         } else if ($("input[name='schedule-type']:checked").val() == 'weekly') {
-            saveWeeklySchedule(streamIndex, scheduleIndex);
+            saveWeeklySchedule(streamIndex);
         } else if ($("input[name='schedule-type']:checked").val() == 'daily') {
-            saveDailySchedule(streamIndex, scheduleIndex);
+            saveDailySchedule(streamIndex);
         } else {
             throw new error("unknown scheduly type " + $("input[name='schedule-type']:checked").val());
         }
         currentlyEditedSchedule = null;
+    }    
+}
+
+function appendScheduleEntry(schedule, index) { 
+    const title = wrapInTd(schedule.stream.title);
+    const time = wrapInTd(dateShortFormat(schedule.startTime));
+    const duration = wrapInTd(schedule.duration + " minutes");
+    const type = wrapInTd(schedule.type);
+    const status = '<td id="status' + index + '">Waiting</td>';
+    var deleteButton = '<td><button type="button" onclick="deleteSchedule(' + index + ');" >Delete</button></td>';    
+    $("#scheduleTable").append('<tr id="schedule' + index + '">' + title + time + duration +  type + status + deleteButton + '</tr>');
+}
+
+function wrapInTd(element) {
+    return '<td>' + element + '</td>';
+}
+
+function saveOnceSchedule(index) {
+    const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
+    if (timeUntilStart <= 0) {
+        startScheduledDownload(index);
+    } else {
+        setTimeout(() => {            
+            startScheduledDownload(index);                           
+        }, timeUntilStart);
     }
 }
 
-function saveOnceSchedule(streamIndex, scheduleIndex) {
-    const timeUntilStart = currentlyEditedSchedule.startTime.getTime() - new Date().getTime();
-        if (timeUntilStart <= 0) {
-            startScheduledDownload(streamIndex, scheduleIndex);
-        } else {
-            setTimeout(() => {
-                startScheduledDownload(streamIndex, scheduleIndex);                
-            }, timeUntilStart);
-        }
-}
-
-function saveWeeklySchedule(streamIndex, scheduleIndex) {
+function saveWeeklySchedule(index) {
     var time = currentlyEditedSchedule.startTime;    
     var sched = createWeeklySchedule(currentlyEditedSchedule.startTime);
-    later.setInterval(() => {
-        startScheduledDownload(possibleStreams[streamIndex], scheduleIndex);
+    later.setInterval(() => {        
+        startScheduledDownload(index);        
     }, sched);
+    model.streams[index].schedule = sched;
+    storeSchedules();
 }
 
-function saveDailySchedule(streamIndex, scheduleIndex) {
+function saveDailySchedule(index) {
     var time = currentlyEditedSchedule.startTime;    
     var sched = createDailySchedule(currentlyEditedSchedule.startTime);
-    later.setInterval(() => {
-        startScheduledDownload(streamIndex, scheduleIndex);
+    later.setInterval(() => {        
+        startScheduledDownload(index);        
     }, sched);
+    model.streams[index].schedule = sched;
+    storeSchedules();
 }
 
-function createWeeklySchedule(time) {
-    return later.parse.recur().on(time.getDay() + 1).dayOfWeek().on(time.getMinutes()).minute().on(time.getHours()).hour();    
+function createWeeklySchedule(time, stream, schedule) {    
+    return later.parse.recur().on(time.getDay() + 1).dayOfWeek().on(time.getMinutes()).minute().on(time.getHours()).hour();
 }
 
-function createDailySchedule(time) {
-    return later.parse.recur().on(time.getMinutes()).minute().on(time.getHours()).hour();    
+function createDailySchedule(time, stream, schedule) {
+    return later.parse.recur().on(time.getMinutes()).minute().on(time.getHours()).hour();
 }
 
 function isPositiveInteger(n) {
@@ -218,8 +234,8 @@ function isPositiveInteger(n) {
 }
 
 function getFilePath(stream) {
-    const baseFolder = getDownloadFolder();
-    return baseFolder + "/" + stream.title + "-" + currentDateFormatted() + "." + stream.mediaType;    
+    const baseFolder = getRecorderBasedir();
+    return baseFolder + stream.title + "-" + currentDateFormatted() + "." + stream.mediaType;    
 }
 
 function currentDateFormatted() {
@@ -232,8 +248,32 @@ function currentDateFormatted() {
                 + now.getSeconds();
 }
 
-function getDownloadFolder() {
-    const folder = osHomedir() + "/tunein-recorder";
+function dateShortFormat(date) {        
+    return formatDay(date) + " " + formatValueWithZero(date.getHours()) + ":" + formatValueWithZero(date.getMinutes());
+}
+
+function formatDay(date) {
+    if (isLaterToday(date)) {
+        return "Today";
+    }
+    return formatValueWithZero(date.getDate()) + '.' + formatValueWithZero(date.getMonth()) + '.';
+}
+
+function formatValueWithZero(value) {
+    return value < 10 ? '0' + value : value;
+}
+
+function isLaterToday(date) {
+    const now = new Date();
+    const sameDay = date.getDate() == now.getDate() && date.getMonth() == now.getMonth();
+    if (sameDay) {
+        return date.getTime() > now.getTime();
+    }
+    return false;
+}
+
+function getRecorderBasedir() {
+    const folder = osHomedir() + "/tunein-recorder/";
     if (!fs.existsSync(folder)) {
         mkdirp(folder, function(err) {
             onFatalError(err);
@@ -249,39 +289,33 @@ function parseDate(text) {
     return parsed;  
 }
 
-function startScheduledDownload(possibleStreamIndex, scheduleIndex) {
-    if (!possibleStreams[possibleStreamIndex]) {
-        return;
-    }
-    const possibleStream = possibleStreams[possibleStreamIndex];
-    const filePath = getFilePath(possibleStream)      
-    const runningDownload = downloadTo(filePath, possibleStream);
-    scheduledStreams[scheduleIndex].runningIndex = runningDownload.runningIndex;
-    $("#status" + scheduleIndex).html('Running');
-    setTimeout(function() {
-        stopDownload(runningDownload.runningIndex);
-        scheduledStreams[scheduleIndex] = null;
-        $("#status" + scheduleIndex).html('Finished');
-    }, scheduledStreams[scheduleIndex].duration * 60 * 1000);
-}
-
-function deleteSchedule(index) {
-    const scheduledStream = scheduledStreams[index];
-    if (scheduledStream.startTime.getTime() > new Date().getTime()) {
-        $("#schedule" + index).remove();
-    }  else {
-        stopDownload(scheduledStream.runningIndex);
-        scheduledStreams[index] = null;
-        $("#schedule" + index).children("button").remove();
-        $("#status" + index).html('Stopped');
+function startScheduledDownload(streamIndex) {
+    if (model.streams[streamIndex]) {    
+        const filePath = getFilePath(model.streams[streamIndex].stream)      
+        downloadTo(filePath, model.streams[streamIndex].stream, streamIndex);        
+        $("#status" + streamIndex).html('Running');
+        setTimeout(function() {
+            stopDownload(streamIndex);
+            model.streams[streamIndex] = null;
+            $("#status" + streamIndex).html('Finished');
+        }, model.streams[streamIndex].duration * 60 * 1000);
     }
 }
 
-function stopDownload(runningIndex) {          
-    var runningStream = runningStreams[runningIndex];
-    runningStream.request.abort();        
-    runningStreams[runningIndex] = null;
-    const downloadIndex = nextIndex();
+function deleteSchedule(streamIndex) {
+    const scheduledStream = model.streams[streamIndex];
+    if (scheduledStream.stream.request) {
+        stopDownload(streamIndex);        
+    }
+    $("#schedule" + streamIndex).remove();
+    model.streams[streamIndex] = null;
+    storeSchedules();
+}
+
+function stopDownload(streamIndex) {          
+    var runningStream = model.streams[streamIndex].stream;
+    runningStream.request.abort();    
+    const downloadIndex = downloadedStreams.length;
     downloadedStreams[downloadIndex] = runningStream;
     var button = '<button type="button" onclick="moveToItunes(' + downloadIndex + ');" >Move to iTunes</button>';
     $("#downloads").append('<div id="download' + downloadIndex + '">' + runningStream.path + button + '</div>');
@@ -315,27 +349,19 @@ function itunesFolders() {
     return [linuxWinPath, macPath];
 }
 
-function startDownload(index) {   
-    var storedFilePath = getFilePath(possibleStreams[index]);
-    if (storedFilePath) {                
-        var runningStream = downloadTo(storedFilePath, possibleStreams[index]);
-        switchToCancelButton(runningStream);
-    }
+function startDownload(possibleStreamIndex) {
+    const stream = {stream: possibleStreams[possibleStreamIndex], index: possibleStreamIndex};
+    const streamIndex = model.streams.length;
+    model.streams[streamIndex] = stream;   
+    var storedFilePath = getFilePath(stream.stream);            
+    downloadTo(storedFilePath, stream.stream);
+    switchToCancelButton(possibleStreamIndex, streamIndex);
 }
 
-function downloadTo(storedFilePath, possibleStream) {    
+function downloadTo(storedFilePath, stream) {    
     var file = fs.createWriteStream(storedFilePath);
-    var request = downloadWithRetry(possibleStream.url, file);
-    var runningIndex = nextIndex();
-    
-    runningStreams[runningIndex] = 
-        {url: possibleStream.url,
-        file,
-        path: storedFilePath,
-        request,
-        streamIndex: possibleStream.index,
-        runningIndex};      
-    return runningStreams[runningIndex];  
+    stream.request = downloadWithRetry(stream.url, file);        
+    stream.path = storedFilePath;    
 }
 
 function downloadWithRetry(url, file) {
@@ -360,24 +386,23 @@ function download(url, file, requestWrapper, currentCount) {
     requestWrapper.request = request;
 }
 
-function switchToStartButton(possibleStream) {
-    $("#toggleButton" + possibleStream.index).attr('onclick', "startDownload($(this).attr('index'));");
-    $("#toggleButton" + possibleStream.index).html('Start download');
+function switchToStartButton(possibleIndex) {
+    $("#toggleButton" + possibleIndex).attr('onclick', "startDownload($(this).attr('index'));");
+    $("#toggleButton" + possibleIndex).html('Start download');
 }
 
-function switchToCancelButton(runningStream) {
-    $("#toggleButton" + runningStream.streamIndex).attr('onclick', "onClickCancel(" + runningStream.runningIndex + ");");
-    $("#toggleButton" + runningStream.streamIndex).html('Stop download');
+function switchToCancelButton(possibleIndex, streamIndex) {
+    $("#toggleButton" + possibleIndex).attr('onclick', "onClickCancel(" + possibleIndex + ", " + streamIndex + ");");
+    $("#toggleButton" + possibleIndex).html('Stop download');
 }
 
-function onClickCancel(runningIndex) {
-    var runningStream = runningStreams[runningIndex];
-    switchToStartButton(possibleStreams[runningStream.streamIndex]);
-    stopDownload(runningIndex);    
+function onClickCancel(possibleIndex, streamIndex) {    
+    switchToStartButton(possibleIndex);
+    stopDownload(streamIndex);    
 }
 
 function nextIndex() {
-    return currentIndex++;
+    return model.currentIndex++;
 }
 
 function showLoadingAnimation() {
@@ -394,7 +419,77 @@ $(document).ready(() => {
 
     $("#version").html("Version: " + version);
     later.date.localTime();
+    loadSchedules();
 });
+
+function storeSchedules() {        
+    fs.writeFile(getSchedulesFile(), JSON.stringify(model, (key, value) => {
+        return key === "request" ? undefined : value;
+    }), function(err) {
+        if(err) {
+            window.alert("Could not save schedule. Schedule will not work after this program is restarted.");
+            onFatalError(err);
+        }    
+    }); 
+}
+
+function loadSchedules() {
+    if (!fs.existsSync(getSchedulesFile())) {
+        console.log("No schedules found.");
+        return;
+    }
+    fs.readFile(getSchedulesFile(), function (err, data) {
+        if (err) {
+            window.alert("Could not load schedules.");
+            onFatalError(err);
+        }
+        try {
+            if (data && data.length > 0) {
+                model = JSON.parse(data.toString());                                
+                reloadSchedules();
+                storeSchedules();
+                startSchedules();
+            }
+        } catch (e) {
+            console.error(e, e.stack);
+            showError("Could not load schedules");
+        }             
+    });
+}
+
+function startSchedules() {    
+    model.streams.forEach((stream, index) => {
+        later.setInterval(() => {
+            startScheduledDownload(index);
+        }, stream.schedule);       
+    });
+}
+
+function reloadSchedules() {
+    $("#scheduleTable").empty();
+    model.streams = model.streams.filter(stream => stream != undefined && stream.schedule);
+    model.streams.forEach(stream => stream.startTime = new Date(Date.parse(stream.startTime)));
+    model.streams.forEach(stream => setNextStartTime(stream) );
+    model.streams.sort((left, right) => left.startTime.getTime() > right.startTime.getTime());    
+    model.streams.forEach((stream, index) => appendScheduleEntry(stream, index) );
+}
+
+function setNextStartTime(stream) { 
+    if (stream.type === 'weekly') {
+        while (stream.startTime.getTime() < new Date().getTime()) {
+            stream.startTime = new Date(stream.startTime.getTime() + 1000 * 60 * 60 * 24 * 7);
+        }
+    } else if (stream.type === 'daily') {
+        while (stream.startTime.getTime() < new Date().getTime()) {
+            stream.startTime = new Date(stream.startTime.getTime() + 1000 * 60 * 60 * 24);
+        }
+    }
+}
+
+
+function getSchedulesFile() {
+    return getRecorderBasedir() + "schedules.json";
+}
 
 $(document).ajaxStop(function() {
     hideLoadingAnimation();
@@ -403,6 +498,9 @@ $(document).ajaxStop(function() {
 $(document).ajaxError((event, jqxhr, settings, thrownError) => showError('Could not load page ' + settings.url));
 
 function onClickReset() {
-    if (confirm("This will remove all schedules and stop all downloads. Are you sure?"))
+    if (confirm("This will remove all schedules and stop all downloads. Are you sure?")) {
+        model.streams = [];
+        storeSchedules();
         location.reload();
+    }
 }

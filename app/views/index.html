@@ -24,12 +24,21 @@
     <br/>
     <h3>
         Scheduled:
-    </h3>
-    <div id="scheduled">
-    </div>
+        <table>
+            <tr>
+                <th>Stream</th>
+                <th>Start</th>
+                <th>Duration</th>
+                <th>Scheduled</th>
+                <th>Status</th>
+                <th>Delete</th>
+            </tr>
+            <tbody  id="scheduleTable"/>
+        </table>
+    </h3>    
     <br/>
     <h3>
-        Downloads:
+        Finished downloads:
     </h3>
     <div id="downloads">
     </div>
@@ -39,7 +48,7 @@
     <div id="schedulePopup" class="hiddenPopup">
         Start<input type="text" id="beginTime" /><br/> 
         Duration
-        <input type="text" id="beginTime" placeholder="30" size="5"/> minutes<br/>        
+        <input type="text" id="duration" placeholder="30" size="5"/> minutes<br/>        
         <input type="radio" name="schedule-type" value="once" checked='checked'>Record once</input>
         <input type="radio" name="schedule-type" value="daily" >Repeat daily</input>
         <input type="radio" name="schedule-type" value="weekly" >Repeat weekly</input></br>
